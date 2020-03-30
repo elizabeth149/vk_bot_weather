@@ -7,6 +7,34 @@ vk_session = vk_api.VkApi(
 start = "start"
 
 
+def dontknow(id):
+    vk = vk_session.get_api()
+    vk.messages.send(user_id=id,
+                     message='''
+К такому сообщению я был не готов...🤔❄''',
+                     random_id=random.randint(0, 2 ** 64))
+
+
+def message_start(text, id):
+    global start
+    if start == "otvet":
+        if text == "Да":
+            vk = vk_session.get_api()
+            vk.messages.send(user_id=id,
+                             message='''
+Для начала давай познакомимся! Как мне стоит к тебе обращаться? ☀''',
+                             random_id=random.randint(0, 2 ** 64))
+            start = "register"
+        elif text == "Нет":
+            vk = vk_session.get_api()
+            vk.messages.send(user_id=id,
+                             message='''
+Очень жаль, приходи к нам еще!🌂''',
+                             random_id=random.randint(0, 2 ** 64))
+        else:
+            dontknow(id)
+
+
 def main():
     global start
     longpoll = VkBotLongPoll(vk_session, 193486299)
@@ -25,6 +53,9 @@ def main():
 Да/Нет''',
                                  random_id=random.randint(0, 2 ** 64))
                 start = "otvet"
+            elif start == "otvet":
+                message_start(event.obj.message['text'],
+                              event.obj.message['from_id'])
 
 
 if __name__ == '__main__':
