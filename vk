@@ -1,7 +1,11 @@
 import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 import random
+from flask import Flask
+from data import db_session
+from data.users import User
 
+db_session.global_init("db/blogs.sqlite")
 vk_session = vk_api.VkApi(
     token='f4a19a52663f6a229df74dee17a5a23e5d7f05cd4aabf1aefc00102492d7144c6b7707cb1a70de7b1b7ed')
 start = "start"
