@@ -5,6 +5,8 @@ import random
 vk_session = vk_api.VkApi(
     token='f4a19a52663f6a229df74dee17a5a23e5d7f05cd4aabf1aefc00102492d7144c6b7707cb1a70de7b1b7ed')
 start = "start"
+name = ""
+town = ""
 
 
 def dontknow(id):
@@ -33,10 +35,18 @@ def message_start(text, id):
                              random_id=random.randint(0, 2 ** 64))
         else:
             dontknow(id)
+    else:
+        vk = vk_session.get_api()
+        vk.messages.send(user_id=id,
+                         message='''
+В каком городе ты проживаешь? ☂🏙''',
+                         random_id=random.randint(0, 2 ** 64))
+        start = "town"
 
 
 def main():
     global start
+    global name
     longpoll = VkBotLongPoll(vk_session, 193486299)
     for event in longpoll.listen():
         if event.type == VkBotEventType.MESSAGE_NEW:
@@ -54,6 +64,10 @@ def main():
                                  random_id=random.randint(0, 2 ** 64))
                 start = "otvet"
             elif start == "otvet":
+                message_start(event.obj.message['text'],
+                              event.obj.message['from_id'])
+            elif start == "register":
+                name = event.obj.message['text']
                 message_start(event.obj.message['text'],
                               event.obj.message['from_id'])
 
