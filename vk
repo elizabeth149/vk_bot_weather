@@ -1,0 +1,31 @@
+import vk_api
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
+import random
+
+vk_session = vk_api.VkApi(
+    token='f4a19a52663f6a229df74dee17a5a23e5d7f05cd4aabf1aefc00102492d7144c6b7707cb1a70de7b1b7ed')
+start = "start"
+
+
+def main():
+    global start
+    longpoll = VkBotLongPoll(vk_session, 193486299)
+    for event in longpoll.listen():
+        if event.type == VkBotEventType.MESSAGE_NEW:
+            if start == "start":
+                vk = vk_session.get_api()
+                vk.messages.send(user_id=event.obj.message['from_id'],
+                                 message='''Привет ☀
+
+Добро пожаловать.
+Я - Бот Погода.
+Моя задача - помочь тебе узнать погоду на сегодня.
+Начнём?🌦
+
+Да/Нет''',
+                                 random_id=random.randint(0, 2 ** 64))
+                start = "otvet"
+
+
+if __name__ == '__main__':
+    main()
