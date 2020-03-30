@@ -70,6 +70,9 @@ def main():
                 name = event.obj.message['text']
                 message_start(event.obj.message['text'],
                               event.obj.message['from_id'])
+            elif start == "town":
+                town = event.obj.message['text']
+                registerbd(name, event.obj.message['from_id'], town)
 
 
 if __name__ == '__main__':
