@@ -4,6 +4,8 @@ import random
 from data import db_session
 from data.answer import Answer
 import json
+import requests
+from vk_api.upload import VkUpload
 
 db_session.global_init("db/blogs.sqlite")
 vk_session = vk_api.VkApi(
@@ -11,6 +13,10 @@ vk_session = vk_api.VkApi(
 start = "start"
 fl = True
 id_sp = []
+
+
+def photo(user_id):
+   pass
 
 
 def dontknow(id):
@@ -57,6 +63,7 @@ def registerbd(id_nach):
                              f"Чуть позже я расскажу о погоде в городе"
                              f" {session.query(Answer).filter(Answer.id == id_nach).first().town} на сегодня😉🌦",
                      random_id=random.randint(0, 2 ** 64))
+    photo(id_nach)
 
 
 def get_button(label, color, payload=""):
@@ -115,7 +122,8 @@ def main():
 Начнём?🌦
 
 Да/Нет''',
-                                 random_id=random.randint(0, 2 ** 64), keyboard=keyboard)
+                                 random_id=random.randint(0, 2 ** 64),
+                                 keyboard=keyboard)
                 answer.ans = "otvet"
                 session.commit()
             elif start == "otvet":
