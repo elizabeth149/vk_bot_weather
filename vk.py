@@ -3,6 +3,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 import random
 from data import db_session
 from data.answer import Answer
+import json
 
 db_session.global_init("db/blogs.sqlite")
 vk_session = vk_api.VkApi(
@@ -47,9 +48,7 @@ def message_start(text, id):
                          random_id=random.randint(0, 2 ** 64))
 
 
-
 def registerbd(id_nach):
-
     global start
     session = db_session.create_session()
     vk = vk_session.get_api()
@@ -58,6 +57,31 @@ def registerbd(id_nach):
                              f"Чуть позже я расскажу о погоде в городе"
                              f" {session.query(Answer).filter(Answer.id == id_nach).first().town} на сегодня😉🌦",
                      random_id=random.randint(0, 2 ** 64))
+
+
+def get_button(label, color, payload=""):
+    return {
+        "action": {
+            "type": "text",
+            "payload": json.dumps(payload),
+            "label": label
+        },
+        "color": color
+    }
+
+
+keyboard = {
+    "one_time": True,
+    "buttons": [
+        [
+            get_button(label="Да", color="positive"),
+            get_button(label="Нет", color="positive")
+        ]
+    ]
+}
+
+keyboard = json.dumps(keyboard, ensure_ascii=False).encode('utf-8')
+keyboard = str(keyboard.decode('utf-8'))
 
 
 def main():
@@ -91,7 +115,7 @@ def main():
 Начнём?🌦
 
 Да/Нет''',
-                                 random_id=random.randint(0, 2 ** 64))
+                                 random_id=random.randint(0, 2 ** 64), keyboard=keyboard)
                 answer.ans = "otvet"
                 session.commit()
             elif start == "otvet":
