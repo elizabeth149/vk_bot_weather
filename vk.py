@@ -8,29 +8,30 @@ db_session.global_init("db/blogs.sqlite")
 vk_session = vk_api.VkApi(
     token='f4a19a52663f6a229df74dee17a5a23e5d7f05cd4aabf1aefc00102492d7144c6b7707cb1a70de7b1b7ed')
 start = "start"
-answer = Answer()
+fl = True
 id_sp = []
 
 
 def dontknow(id):
+    global fl
     vk = vk_session.get_api()
     vk.messages.send(user_id=id,
                      message='''
 К такому сообщению я был не готов...🤔❄''',
                      random_id=random.randint(0, 2 ** 64))
+    fl = False
 
 
 def message_start(text, id):
     global start
-    global answer
     if start == "otvet":
-        if text == "Да":
+        if text == "Да" or text == "да":
             vk = vk_session.get_api()
             vk.messages.send(user_id=id,
                              message='''
 Для начала давай познакомимся! Как мне стоит к тебе обращаться? ☀''',
                              random_id=random.randint(0, 2 ** 64))
-        elif text == "Нет":
+        elif text == "Нет" or text == "нет":
             vk = vk_session.get_api()
             vk.messages.send(user_id=id,
                              message='''
@@ -47,21 +48,24 @@ def message_start(text, id):
 
 
 
-def registerbd(text, id):
+def registerbd(id_nach):
+
     global start
+    session = db_session.create_session()
     vk = vk_session.get_api()
-    vk.messages.send(user_id=id,
-                     message=f"Приятно познакомиться, {answer.name}! "
+    vk.messages.send(user_id=id_nach,
+                     message=f"Приятно познакомиться, {session.query(Answer).filter(Answer.id == id_nach).first().name}! "
                              f"Чуть позже я расскажу о погоде в городе"
-                             f" {answer.town} на сегодня😉🌦",
+                             f" {session.query(Answer).filter(Answer.id == id_nach).first().town} на сегодня😉🌦",
                      random_id=random.randint(0, 2 ** 64))
 
 
 def main():
     global start
-    global answer
+    global fl
     longpoll = VkBotLongPoll(vk_session, 193486299)
     for event in longpoll.listen():
+        answer = Answer()
         if event.type == VkBotEventType.MESSAGE_NEW:
             session = db_session.create_session()
             id_nach = event.obj.message['from_id']
@@ -71,9 +75,11 @@ def main():
                 answer.id = event.obj.message['from_id']
                 session.add(answer)
                 session.commit()
-                start = answer.ans
+                start = session.query(Answer).filter(
+                    Answer.id == id_nach).first().ans
             else:
-                start = answer.ans
+                start = session.query(Answer).filter(
+                    Answer.id == id_nach).first().ans
             if start == "start":
                 vk = vk_session.get_api()
                 vk.messages.send(user_id=event.obj.message['from_id'],
@@ -86,16 +92,18 @@ def main():
 
 Да/Нет''',
                                  random_id=random.randint(0, 2 ** 64))
-                answer = session.query(Answer).filter(Answer.id == id_nach).first()
                 answer.ans = "otvet"
                 session.commit()
             elif start == "otvet":
+                fl = True
                 message_start(event.obj.message['text'],
                               event.obj.message['from_id'])
                 answer = session.query(Answer).filter(
                     Answer.id == id_nach).first()
-                answer.ans = "register"
-                session.commit()
+                print(answer)
+                if fl:
+                    answer.ans = "register"
+                    session.commit()
             elif start == "register":
                 message_start(event.obj.message['text'],
                               event.obj.message['from_id'])
@@ -109,7 +117,7 @@ def main():
                     Answer.id == id_nach).first()
                 answer.town = event.obj.message['text']
                 session.commit()
-                registerbd(event.obj.message['text'], event.obj.message['from_id'])
+                registerbd(event.obj.message['from_id'])
                 answer = session.query(Answer).filter(
                     Answer.id == id_nach).first()
                 answer.ans = "...."
