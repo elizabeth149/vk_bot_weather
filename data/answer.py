@@ -9,8 +9,6 @@ class Answer(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer,
                            primary_key=True, autoincrement=True)
     ans = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    idvk = sqlalchemy.Column(sqlalchemy.String,
-                             index=True, unique=True, nullable=True)
     name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     town = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     created_date = sqlalchemy.Column(sqlalchemy.DateTime,
