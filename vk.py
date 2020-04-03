@@ -4,19 +4,38 @@ import random
 from data import db_session
 from data.answer import Answer
 import json
-import requests
 from vk_api.upload import VkUpload
+import requests
 
 db_session.global_init("db/blogs.sqlite")
 vk_session = vk_api.VkApi(
-    token='f4a19a52663f6a229df74dee17a5a23e5d7f05cd4aabf1aefc00102492d7144c6b7707cb1a70de7b1b7ed')
+    token='token')
 start = "start"
 fl = True
 id_sp = []
+ADDRES = 0
+ADDRES2 = 0
+pos1 = 0
+pos2 = 0
 
 
-def photo(user_id):
-   pass
+def upload_photo(upload, photo):
+    response = upload.photo_messages(photo)[0]
+
+    owner_id = response['owner_id']
+    photo_id = response['id']
+    access_key = response['access_key']
+
+    return owner_id, photo_id, access_key
+
+
+def send_photo(vk, id, owner_id, photo_id, access_key):
+    attachment = f'photo{owner_id}_{photo_id}_{access_key}'
+    vk.messages.send(
+        random_id=random.randint(0, 2 ** 64),
+        user_id=id,
+        attachment=attachment
+    )
 
 
 def dontknow(id):
@@ -54,16 +73,59 @@ def message_start(text, id):
                          random_id=random.randint(0, 2 ** 64))
 
 
+def coordinates(geocoder_request, id_nach):
+    global ADDRES
+    global ADDRES2
+    global pos1
+    global pos2
+    response = requests.get(geocoder_request)
+    if response:
+        json_response = response.json()
+        toponym = \
+            json_response["response"]["GeoObjectCollection"][
+                "featureMember"][
+                0][
+                "GeoObject"]
+        toponym_coodrinates = toponym["Point"]["pos"]
+        ADDRES = float(toponym_coodrinates.split()[0])
+        ADDRES2 = float(toponym_coodrinates.split()[1])
+        pos1 = float(toponym_coodrinates.split()[0])
+        pos2 = float(toponym_coodrinates.split()[1])
+        sizze(id_nach)
+    else:
+        vk = vk_session.get_api()
+        vk.messages.send(user_id=id_nach,
+                         message='''Такого города я не знаю☂🤷‍♀''',
+                         random_id=random.randint(0, 2 ** 64))
+
+
+def map(text, id_nach):
+    coordinates(
+        f"http://geocode-maps.yandex.ru/1.x/?apikey=APIKEY&geocode={text}&format=json", id_nach)
+
+
+def sizze(id_nach):
+    global ADDRES
+    global ADDRES2
+    sp = f"https://static-maps.yandex.ru/1.x/?ll={ADDRES},{ADDRES2}&z=5&l=sat,skl&pt={pos1},{pos2},pmwtm1"
+    response = requests.get(sp)
+    map_file = "map.jpg"
+    with open(map_file, "wb") as file:
+        file.write(response.content)
+    vk = vk_session.get_api()
+    upload = VkUpload(vk)
+    send_photo(vk, id_nach, *upload_photo(upload, map_file))
+
+
 def registerbd(id_nach):
     global start
     session = db_session.create_session()
     vk = vk_session.get_api()
     vk.messages.send(user_id=id_nach,
                      message=f"Приятно познакомиться, {session.query(Answer).filter(Answer.id == id_nach).first().name}! "
-                             f"Чуть позже я расскажу о погоде в городе"
-                             f" {session.query(Answer).filter(Answer.id == id_nach).first().town} на сегодня😉🌦",
+                             f"Ищу информацию о погоде в городе"
+                             f" {session.query(Answer).filter(Answer.id == id_nach).first().town} на сегодня...😉🌦",
                      random_id=random.randint(0, 2 ** 64))
-    photo(id_nach)
 
 
 def get_button(label, color, payload=""):
@@ -152,8 +214,10 @@ def main():
                 registerbd(event.obj.message['from_id'])
                 answer = session.query(Answer).filter(
                     Answer.id == id_nach).first()
-                answer.ans = "...."
+                answer.ans = "scan"
                 session.commit()
+                map(session.query(Answer).filter(
+                    Answer.id == id_nach).first().town, event.obj.message['from_id'])
 
 
 if __name__ == '__main__':
