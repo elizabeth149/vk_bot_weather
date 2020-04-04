@@ -88,12 +88,13 @@ def send_photo(vk, id, owner_id, photo_id, access_key):
             keyboard=keyboard_2
         )
     else:
-        vk.messages.send(
-            random_id=random.randint(0, 2 ** 64),
-            user_id=id,
-            message=f'Погода в данном городе не найдена, попробуйте выбрать другой город🌡',
-            keyboard=keyboard_2
-        )
+        if git_z == 2:
+            vk.messages.send(
+                random_id=random.randint(0, 2 ** 64),
+                user_id=id,
+                message=f'Погода в данном городе не найдена, попробуйте выбрать другой город🌡',
+                keyboard=keyboard_1
+            )
 
 
 def dontknow(id):
@@ -174,8 +175,9 @@ def coordinates(geocoder_request, id_nach):
             session = db_session.create_session()
             answer = session.query(Answer).filter(
                 Answer.id == id_nach).first()
-            answer.ans = "weather"
-            session.commit()
+            if answer.ans != "change":
+                answer.ans = "weather"
+                session.commit()
         else:
             vk = vk_session.get_api()
             vk.messages.send(user_id=id_nach,
@@ -366,6 +368,13 @@ def main():
                     answer.town = event.obj.message['text']
                     session.commit()
                     registerbd(event.obj.message['from_id'])
+                    map(session.query(Answer).filter(
+                        Answer.id == id_nach).first().town,
+                        event.obj.message['from_id'])
+                else:
+                    answer.another_town = event.obj.message['text']
+                    session.commit()
+                    registerbd(event.obj.message['from_id'])
                     if townfl:
                         map(session.query(Answer).filter(
                             Answer.id == id_nach).first().town,
@@ -374,13 +383,6 @@ def main():
                         map(session.query(Answer).filter(
                             Answer.id == id_nach).first().another_town,
                             event.obj.message['from_id'])
-                else:
-                    answer.another_town = event.obj.message['text']
-                    session.commit()
-                    registerbd(event.obj.message['from_id'])
-                    map(session.query(Answer).filter(
-                        Answer.id == id_nach).first().another_town,
-                        event.obj.message['from_id'])
 
             elif start == "change":
                 if event.obj.message['text'] == "Изменить город":
@@ -396,6 +398,7 @@ def main():
                         answer.ans = "town"
                         session.commit()
                     else:
+                        townfl = False
                         vk = vk_session.get_api()
                         vk.messages.send(user_id=event.obj.message['from_id'],
                                          message='''
