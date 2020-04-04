@@ -11,5 +11,6 @@ class Answer(SqlAlchemyBase):
     ans = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     town = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    another_town = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     created_date = sqlalchemy.Column(sqlalchemy.DateTime,
                                      default=datetime.datetime.now)
