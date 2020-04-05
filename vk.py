@@ -6,7 +6,7 @@ from data.answer import Answer
 import json
 from vk_api.upload import VkUpload
 import requests
-import passwords as settings
+import password as settings
 
 token = settings.MYSQL_TOKEN
 apikey = settings.MYSQL_APIKEY
