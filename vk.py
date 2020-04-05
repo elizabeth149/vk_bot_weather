@@ -6,10 +6,13 @@ from data.answer import Answer
 import json
 from vk_api.upload import VkUpload
 import requests
+import passwords as settings
 
+token = settings.MYSQL_TOKEN
+apikey = settings.MYSQL_APIKEY
 db_session.global_init("db/blogs.sqlite")
 vk_session = vk_api.VkApi(
-    token='')
+    token=token)
 start = "start"
 fl = True
 fl_1 = False
@@ -203,8 +206,9 @@ def coordinates(geocoder_request, id_nach):
 
 
 def map(text, id_nach):
+    global apikey
     coordinates(
-        f"http://geocode-maps.yandex.ru/1.x/?apikey=&geocode={text}&format=json",
+        f"http://geocode-maps.yandex.ru/1.x/?apikey={apikey}&geocode={text}&format=json",
         id_nach)
 
 
