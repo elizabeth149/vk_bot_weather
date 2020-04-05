@@ -25,36 +25,80 @@ pos1 = 0
 pos2 = 0
 
 
-def weather(id):
-    session = db_session.create_session()
-    answer = session.query(Answer).filter(
-        Answer.id == id).first()
-    if townfl:
-        find = requests.get(
-            f'http://api.openweathermap.org/data/2.5/weather?q={answer.town}&appid=e1c74a6cdc0612198a312535515c63b3&lang=RU').json()
-    else:
-        find = requests.get(
-            f'http://api.openweathermap.org/data/2.5/weather?q={answer.another_town}&appid=e1c74a6cdc0612198a312535515c63b3&lang=RU').json()
-    try:
-        a = find["weather"][0]["description"]
-        b = round(float(find["main"]["temp"]) - 273)  # темп
-        b_1 = round(float(find["main"]["feels_like"]) - 273)
-        c = find["main"]["humidity"]  # влажность
-        d = round(float(
-            find["main"]["pressure"]) * 0.00750063755419211 * 100)  # давление
-        return a, b, b_1, c, d
-    except KeyError:
-        vk = vk_session.get_api()
-        vk.messages.send(user_id=id,
-                         message='''Вашего города я не знаю☂🤷‍♀''',
-                         random_id=random.randint(0, 2 ** 64),
-                         keyboard=keyboard_1)
+class Weather:
+    def __init__(self):
+        pass
+
+    def find_w(self, find, id):
+        global git_z
+        try:
+            a = find["weather"][0]["description"]
+            b = round(float(find["main"]["temp"]) - 273)  # темп
+            b_1 = round(float(find["main"]["feels_like"]) - 273)
+            c = find["main"]["humidity"]  # влажность
+            d = round(float(
+                find["main"][
+                    "pressure"]) * 0.00750063755419211 * 100)  # давление
+            return a, b, b_1, c, d
+        except KeyError:
+            if git_z != 2:
+                vk = vk_session.get_api()
+                vk.messages.send(user_id=id,
+                                 message='''Погода в вашем городе не найдена, 
+попробуйте изменить данные☂''',
+                                 random_id=random.randint(0, 2 ** 64),
+                                 keyboard=keyboard_1)
+            session = db_session.create_session()
+            answer = session.query(Answer).filter(
+                Answer.id == id).first()
+            answer.ans = "change"
+            session.commit()
+            return None
+
+    def weather(self, id):
         session = db_session.create_session()
         answer = session.query(Answer).filter(
             Answer.id == id).first()
-        answer.ans = "change"
-        session.commit()
-        return None
+        if townfl:
+            try:
+                find = requests.get(
+                    f'http://api.openweathermap.org/'
+                    f'data/2.5/weather?q={answer.town}'
+                    f'&appid=e1c74a6cdc0612198a312535515c63b3&lang=RU').json()
+                return self.find_w(find, id)
+            except ConnectionResetError:
+                vk = vk_session.get_api()
+                vk.messages.send(user_id=id,
+                                 message='''Сервер временно недоступен, 
+попробуйте повторить попытку позже''',
+                                 random_id=random.randint(0, 2 ** 64),
+                                 keyboard=keyboard_1)
+                session = db_session.create_session()
+                answer = session.query(Answer).filter(
+                    Answer.id == id).first()
+                answer.ans = "weather"
+                session.commit()
+                return 1
+        else:
+            try:
+                find = requests.get(
+                    f'http://api.openweathermap.org/'
+                    f'data/2.5/weather?q={answer.another_town}'
+                    f'&appid=e1c74a6cdc0612198a312535515c63b3&lang=RU').json()
+                return self.find_w(find, id)
+            except ConnectionResetError:
+                vk = vk_session.get_api()
+                vk.messages.send(user_id=id,
+                                 message='''Сервер временно недоступен, 
+попробуйте повторить попытку позже''',
+                                 random_id=random.randint(0, 2 ** 64),
+                                 keyboard=keyboard_1)
+                session = db_session.create_session()
+                answer = session.query(Answer).filter(
+                    Answer.id == id).first()
+                answer.ans = "weather"
+                session.commit()
+                return 1
 
 
 def upload_photo(upload, photo):
@@ -67,37 +111,50 @@ def upload_photo(upload, photo):
     return owner_id, photo_id, access_key
 
 
-def send_photo(vk, id, owner_id, photo_id, access_key):
-    global townfl
-    session = db_session.create_session()
-    answer = session.query(Answer).filter(
-        Answer.id == id).first()
-    if weather(id) is not None:
-        a, b, b_1, c, d = weather(id)
-        attachment = f'photo{owner_id}_{photo_id}_{access_key}'
-        if townfl:
-            town = answer.town
-        else:
-            town = answer.another_town
-        vk.messages.send(
-            random_id=random.randint(0, 2 ** 64),
-            user_id=id,
-            message=f'Погода в настоящее время в городе {town}🌦:\n'
-                    f'Сейчас {a}\n'
-                    f'Температура🌡: {b}℃, ощущается {b_1}℃\n'
-                    f'Влажность воздуха: {c}%\n'
-                    f'Давление: {d}мм.рт.ст.\n',
-            attachment=attachment,
-            keyboard=keyboard_2
-        )
-    else:
-        if git_z == 2:
+class Photo:
+    def __init__(self):
+        pass
+
+    def send_photo(self, vk, id, owner_id, photo_id, access_key):
+        w = Weather()
+        global townfl
+        session = db_session.create_session()
+        answer = session.query(Answer).filter(
+            Answer.id == id).first()
+        weather = w.weather(id)
+        if weather is not None and weather != 1:
+            a, b, b_1, c, d = w.weather(id)
+            attachment = f'photo{owner_id}_{photo_id}_{access_key}'
+            if townfl:
+                town = answer.town
+            else:
+                town = answer.another_town
             vk.messages.send(
                 random_id=random.randint(0, 2 ** 64),
                 user_id=id,
-                message=f'Погода в данном городе не найдена, попробуйте выбрать другой город🌡',
-                keyboard=keyboard_1
+                message=f'Погода в настоящее время в городе {town}🌦:\n'
+                        f'Сейчас {a}\n'
+                        f'Температура🌡: {b}℃, ощущается {b_1}℃\n'
+                        f'Влажность воздуха: {c}%\n'
+                        f'Давление: {d}мм.рт.ст.\n',
+                attachment=attachment,
+                keyboard=keyboard_2
             )
+        elif weather == 1:
+            vk.messages.send(
+                random_id=random.randint(0, 2 ** 64),
+                user_id=id,
+                keyboard=keyboard_2
+            )
+        else:
+            if git_z == 2:
+                vk.messages.send(
+                    random_id=random.randint(0, 2 ** 64),
+                    user_id=id,
+                    message=f'Погода в данном городе не найдена,'
+                            f' попробуйте выбрать другой город🌡',
+                    keyboard=keyboard_1
+                )
 
 
 def dontknow(id):
@@ -184,7 +241,8 @@ def coordinates(geocoder_request, id_nach):
         else:
             vk = vk_session.get_api()
             vk.messages.send(user_id=id_nach,
-                             message='''Вашего города я не знаю☂🤷‍♀''',
+                             message='''Ваш город не найден, 
+попробуйте изменить данные☂''',
                              random_id=random.randint(0, 2 ** 64),
                              keyboard=keyboard_1)
             session = db_session.create_session()
@@ -192,23 +250,13 @@ def coordinates(geocoder_request, id_nach):
                 Answer.id == id_nach).first()
             answer.ans = "change"
             session.commit()
-    else:
-        vk = vk_session.get_api()
-        vk.messages.send(user_id=id_nach,
-                         message='''Вашего города я не знаю☂🤷‍♀''',
-                         random_id=random.randint(0, 2 ** 64),
-                         keyboard=keyboard_1)
-        session = db_session.create_session()
-        answer = session.query(Answer).filter(
-            Answer.id == id_nach).first()
-        answer.ans = "change"
-        session.commit()
 
 
 def map(text, id_nach):
     global apikey
     coordinates(
-        f"http://geocode-maps.yandex.ru/1.x/?apikey={apikey}&geocode={text}&format=json",
+        f"http://geocode-maps.yandex.ru/1.x/?apikey={apikey}"
+        f"&geocode={text}&format=json",
         id_nach)
 
 
@@ -216,43 +264,53 @@ def sizze(id_nach):  # выдаем погоду
     global ADDRES
     global ADDRES2
     global townfl
-    sp = f"https://static-maps.yandex.ru/1.x/?ll={ADDRES},{ADDRES2}&spn=0.09,0.09&l=map&pt={pos1},{pos2},pm2rdl"
+    s = Photo()
+    sp = f"https://static-maps.yandex.ru/1.x/?ll={ADDRES},{ADDRES2}" \
+         f"&spn=0.09,0.09&l=map&pt={pos1},{pos2},pm2rdl"
     response = requests.get(sp)
     map_file = "map.jpg"
     with open(map_file, "wb") as file:
         file.write(response.content)
     vk = vk_session.get_api()
     upload = VkUpload(vk)
-    send_photo(vk, id_nach, *upload_photo(upload, map_file))
+    s.send_photo(vk, id_nach, *upload_photo(upload, map_file))
     townfl = True
 
 
-def registerbd(id_nach):
-    global start
-    global git_z
-    if git_z == 0:
-        session = db_session.create_session()
-        vk = vk_session.get_api()
-        vk.messages.send(user_id=id_nach,
-                         message=f"Приятно познакомиться, {session.query(Answer).filter(Answer.id == id_nach).first().name}! "
-                                 f"Ищу информацию о погоде в городе"
-                                 f" {session.query(Answer).filter(Answer.id == id_nach).first().town} на сегодня...😉🌦",
-                         random_id=random.randint(0, 2 ** 64))
-    else:
-        if townfl:
+class Register:
+    def __init__(self):
+        pass
+
+    def registerbd(self, id_nach):
+        global start
+        global git_z
+        if git_z == 0:
             session = db_session.create_session()
             vk = vk_session.get_api()
             vk.messages.send(user_id=id_nach,
-                             message=f"Ищу информацию о погоде в городе"
-                                     f" {session.query(Answer).filter(Answer.id == id_nach).first().town} на сегодня...😉🌦",
+                             message=f"Приятно познакомиться, "
+                                     f"{session.query(Answer).filter(Answer.id == id_nach).first().name}! "
+                                     f"Ищу информацию о погоде в городе"
+                                     f" {session.query(Answer).filter(Answer.id == id_nach).first().town} "
+                                     f"на сегодня...😉🌦",
                              random_id=random.randint(0, 2 ** 64))
         else:
-            session = db_session.create_session()
-            vk = vk_session.get_api()
-            vk.messages.send(user_id=id_nach,
-                             message=f"Ищу информацию о погоде в городе"
-                                     f" {session.query(Answer).filter(Answer.id == id_nach).first().another_town} на сегодня...😉🌦",
-                             random_id=random.randint(0, 2 ** 64))
+            if townfl:
+                session = db_session.create_session()
+                vk = vk_session.get_api()
+                vk.messages.send(user_id=id_nach,
+                                 message=f"Ищу информацию о погоде в городе"
+                                         f" {session.query(Answer).filter(Answer.id == id_nach).first().town} "
+                                         f"на сегодня...😉🌦",
+                                 random_id=random.randint(0, 2 ** 64))
+            else:
+                session = db_session.create_session()
+                vk = vk_session.get_api()
+                vk.messages.send(user_id=id_nach,
+                                 message=f"Ищу информацию о погоде в городе"
+                                         f" {session.query(Answer).filter(Answer.id == id_nach).first().another_town} "
+                                         f"на сегодня...😉🌦",
+                                 random_id=random.randint(0, 2 ** 64))
 
 
 def get_button(label, color, payload=""):
@@ -310,6 +368,7 @@ def main():
     global git_z
     global fl_1
     global townfl
+    r = Register()
     longpoll = VkBotLongPoll(vk_session, 193486299)
     for event in longpoll.listen():
         answer = Answer()
@@ -321,6 +380,12 @@ def main():
                 answer.ans = "start"
                 answer.id = event.obj.message['from_id']
                 session.add(answer)
+                session.commit()
+                start = session.query(Answer).filter(
+                    Answer.id == id_nach).first().ans
+            elif event.obj.message['text'] == "Начать":
+                answer.ans = "start"
+                answer.id = event.obj.message['from_id']
                 session.commit()
                 start = session.query(Answer).filter(
                     Answer.id == id_nach).first().ans
@@ -371,14 +436,14 @@ def main():
                 if git_z != 2:
                     answer.town = event.obj.message['text']
                     session.commit()
-                    registerbd(event.obj.message['from_id'])
+                    r.registerbd(event.obj.message['from_id'])
                     map(session.query(Answer).filter(
                         Answer.id == id_nach).first().town,
                         event.obj.message['from_id'])
                 else:
                     answer.another_town = event.obj.message['text']
                     session.commit()
-                    registerbd(event.obj.message['from_id'])
+                    r.registerbd(event.obj.message['from_id'])
                     if townfl:
                         map(session.query(Answer).filter(
                             Answer.id == id_nach).first().town,
@@ -428,7 +493,7 @@ def main():
                     session.commit()
                     townfl = False
                 elif event.obj.message['text'] == "Погода в моем городе":
-                    registerbd(event.obj.message['from_id'])
+                    r.registerbd(event.obj.message['from_id'])
                     map(session.query(Answer).filter(
                         Answer.id == id_nach).first().town,
                         event.obj.message['from_id'])
